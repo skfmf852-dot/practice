@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>제발 올라라</title>
+<style>
+  @font-face {
+    font-family: "Pretendard";
+    src: url("fonts/PretendardVariable.woff2") format("woff2");
+    font-weight: 45 920;
+  }
+  :root {
+    --canvas: #e8e6e1;
+    --ink: #0b0b0c;
+    --paper: #ffffff;
+    --up: #f0364a;
+    --muted: #8b8a90;
+  }
+  html, body {
+    margin: 0;
+    width: 1440px;
+    height: 1440px;
+    overflow: hidden;
+    background: var(--canvas);
+    font-family: "Pretendard", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "tnum" 1;
+    letter-spacing: -0.01em;
+  }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #shape {
+    position: absolute;
+    overflow: hidden;
+    box-shadow: 0 1px 1.5px rgba(20, 16, 10, .05), 0 10px 28px -10px rgba(20, 16, 10, .16);
+  }
+  .layer { position: absolute; left: 50%; top: 50%; box-sizing: border-box; }
+  .row { display: flex; align-items: center; }
+  .abs { position: absolute; }
+  svg { display: block; overflow: visible; }
+  .up { color: var(--up); }
+
+  /* button */
+  #L-button { width: 256px; height: 68px; justify-content: center; gap: 12px; color: #fff; font-size: 21px; font-weight: 650; }
+  .upcirc { width: 28px; height: 28px; border-radius: 50%; background: var(--up); display: grid; place-items: center; flex: none; }
+
+  /* account */
+  #L-account { width: 380px; height: 132px; color: var(--ink); }
+  #A-k { left: 24px; top: 22px; font-size: 14px; color: var(--muted); font-weight: 500; }
+  #A-name { left: 24px; top: 42px; font-size: 22px; font-weight: 700; }
+  .A-val { right: 24px; top: 26px; font-size: 26px; font-weight: 700; color: #6e6d73; }
+  #A-today { right: 24px; top: 60px; font-size: 13px; color: var(--muted); }
+  #A-spark { left: 24px; top: 86px; }
+
+  /* hold */
+  #L-hold { width: 360px; height: 76px; color: #fff; }
+  #H-fill { left: 0; top: 0; bottom: 0; background: var(--up); }
+  .H-lab { left: 0; right: 0; top: 0; bottom: 0; justify-content: center; gap: 10px; font-size: 19px; font-weight: 650; }
+
+  /* slider */
+  #L-slider { height: 92px; color: var(--ink); }
+  #S-lab { left: 28px; top: 0; bottom: 0; font-size: 17px; font-weight: 700; }
+  #S-track { left: 112px; top: 40px; height: 12px; border-radius: 6px; background: #ebe8e3; }
+  #S-fill { left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--up); }
+  #S-knob { top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.14); }
+  #S-val { right: 28px; top: 0; bottom: 0; font-size: 20px; font-weight: 700; }
+
+  /* toggle row */
+  #L-row { width: 300px; height: 84px; color: var(--ink); }
+  #R-lab { left: 28px; top: 0; bottom: 0; font-size: 18px; font-weight: 700; }
+  #R-track { left: 178px; top: 10px; width: 108px; height: 64px; border-radius: 32px; }
+
+  /* tabs group + puck */
+  #group { position: absolute; left: 50%; top: 50%; width: 480px; height: 76px; }
+  #group-bg { position: absolute; inset: 0; border-radius: 38px; background: rgba(255,255,255,.09); }
+  #puck { position: absolute; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 3px 8px rgba(0,0,0,.08); }
+  .labels { position: absolute; inset: 0; display: flex; padding: 0 6px; font-size: 17px; font-weight: 650; }
+  .labels span { width: 117px; display: grid; place-items: center; }
+  #labels-w { color: rgba(255,255,255,.6); }
+  #labels-b { color: var(--ink); }
+
+  /* chart */
+  #L-chart { width: 680px; height: 520px; color: #fff; }
+  #C-chip { left: 520px; top: 36px; width: 136px; height: 52px; border-radius: 26px; background: rgba(255,255,255,.1); justify-content: center; gap: 6px; font-size: 15px; font-weight: 600; color: rgba(255,255,255,.85); }
+  #C-label { left: 24px; top: 120px; font-size: 15px; color: rgba(255,255,255,.55); }
+  #C-value { left: 24px; top: 144px; font-size: 52px; font-weight: 750; line-height: 1; letter-spacing: -0.03em; }
+  #C-svg { left: 0; top: 0; }
+  #C-tip { left: 0; top: 0; height: 36px; padding: 0 12px; border-radius: 12px; background: #fff; color: var(--ink); font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .tv { position: absolute; left: 12px; top: 0; height: 36px; display: flex; align-items: center; gap: 8px; }
+  .tv .m { color: rgba(11,11,12,.5); font-weight: 500; }
+
+  /* counter */
+  #L-counter { width: 440px; height: 150px; color: #fff; }
+  .Q-lab { left: 0; right: 0; top: 24px; text-align: center; font-size: 15px; font-weight: 600; color: rgba(255,255,255,.82); }
+  #Q-num { left: 0; right: 0; top: 52px; height: 76px; justify-content: center; font-size: 68px; font-weight: 760; letter-spacing: -0.02em; line-height: 76px; }
+  .wheel { height: 76px; overflow: hidden; position: relative; }
+  .wheel > div { position: relative; }
+  .wheel span { display: block; height: 76px; }
+
+  /* candles */
+  #L-candles { width: 400px; color: var(--ink); }
+  #K-svg { left: 0; bottom: 0; }
+  .K-lab { left: 24px; bottom: 22px; font-size: 16px; font-weight: 700; }
+  #K-pct { right: 24px; bottom: 22px; font-size: 16px; font-weight: 750; }
+
+  /* toast */
+  #L-toast { width: 440px; height: 76px; padding: 0 24px 0 20px; gap: 12px; color: #fff; font-size: 18px; font-weight: 650; }
+  .T-val { right: 24px; top: 0; bottom: 0; font-weight: 750; }
+
+  #cursor { position: absolute; left: 0; top: 0; transform-origin: 3px 2px; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.28)); }
+</style>
+</head>
+<body>
+<div id="world">
+  <div id="shape">
+    <div class="layer row" id="L-button">
+      <span>제발 올라라</span>
+      <div class="upcirc"><svg id="B-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3.5M3.5 8 8 3.5 12.5 8"/></svg></div>
+    </div>
+
+    <div class="layer" id="L-account">
+      <div class="abs" id="A-k">내 계좌</div>
+      <div class="abs" id="A-name">미국주식</div>
+      <div class="abs A-val" id="A-v0">−3.24%</div>
+      <div class="abs A-val" id="A-v1">−3.71%</div>
+      <div class="abs" id="A-today">오늘</div>
+      <svg class="abs" id="A-spark" width="332" height="30" viewBox="0 0 332 30" fill="none"><path id="A-line" stroke="#9c9ba1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/></svg>
+    </div>
+
+    <div class="layer" id="L-hold">
+      <div class="abs" id="H-fill"></div>
+      <div class="abs row H-lab" id="H-l0"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8.5"/><path d="M11 15V7.5M7.5 10.5 11 7l3.5 3.5"/></svg><span>꾹 눌러서 기도하기</span></div>
+      <div class="abs row H-lab" id="H-l1"><span>기도 중…</span></div>
+      <div class="abs row H-lab" id="H-l2"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 11.5l3.6 3.6L16.5 7.5"/></svg><span>기도 접수 완료</span></div>
+    </div>
+
+    <div class="layer" id="L-slider">
+      <div class="abs row" id="S-lab">희망 지수</div>
+      <div class="abs" id="S-track"><div class="abs" id="S-fill"></div><div class="abs" id="S-knob"></div></div>
+      <div class="abs row" id="S-val">40%</div>
+    </div>
+
+    <div class="layer" id="L-row">
+      <div class="abs row" id="R-lab">존버 모드</div>
+      <div class="abs" id="R-track"></div>
+    </div>
+
+    <div class="layer" id="L-chart">
+      <svg class="abs" id="C-svg" width="680" height="520" viewBox="-340 -260 680 520" fill="none">
+        <path d="M-316 -50H316M-316 70H316M-316 190H316" stroke="rgba(255,255,255,.07)"/>
+        <path id="C-zero" stroke="rgba(255,255,255,.22)" stroke-dasharray="3 5"/>
+        <line id="C-guide" y1="-50" y2="190" stroke="rgba(255,255,255,.22)" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <path id="C-line" stroke="#f0364a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/>
+        <circle id="C-head" r="6" fill="#f0364a" stroke="#0b0b0c" stroke-width="3"/>
+        <circle id="C-hot" r="7" fill="#f0364a" stroke="#fff" stroke-width="3"/>
+        <g id="C-months" fill="rgba(255,255,255,.42)" font-size="13" font-family="Pretendard" text-anchor="middle"></g>
+      </svg>
+      <div class="abs" id="C-label">내 계좌 수익률 · 1년</div>
+      <div class="abs" id="C-value">+0.0%</div>
+      <div class="abs row" id="C-chip"><span>크게 보기</span><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l6-6M5 4h5v5"/></svg></div>
+      <div class="abs" id="C-tip"><div class="tv" id="tip0"><span class="m">11월</span><span class="up">+12.4%</span></div><div class="tv" id="tip1"><span class="m">12월</span><span class="up">+18.6%</span></div><span style="visibility:hidden" class="row"><span class="m">11월</span>&nbsp;&nbsp;<span>+18.6%</span></span></div>
+    </div>
+
+    <div class="layer" id="L-counter">
+      <div class="abs Q-lab" id="Q-l0">오늘의 기도 결과</div>
+      <div class="abs Q-lab" id="Q-l1">기도가 통했다</div>
+      <div class="abs row" id="Q-num"></div>
+    </div>
+
+    <div class="layer" id="L-candles">
+      <svg class="abs" id="K-svg" width="400" fill="none"><g id="K-g"></g></svg>
+      <div class="abs K-lab" id="K-l0">1연속 빨간불</div>
+      <div class="abs K-lab" id="K-l1">2연속 빨간불</div>
+      <div class="abs K-lab" id="K-l2">3연속 빨간불</div>
+      <div class="abs K-lab up" id="K-l3">4연속 빨간불</div>
+      <div class="abs up" id="K-pct">가즈아</div>
+    </div>
+
+    <div class="layer row" id="L-toast">
+      <div class="upcirc" style="width:32px;height:32px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3.5M3.5 8 8 3.5 12.5 8"/></svg></div>
+      <span>빨간불 켜졌어요</span>
+      <span class="abs row T-val up" id="T-v0">+18.6%</span>
+      <span class="abs row T-val up" id="T-v1">+19.2%</span>
+    </div>
+
+    <div id="group">
+      <div id="group-bg"></div>
+      <div class="labels" id="labels-w"><span>1일</span><span>1주</span><span>1달</span><span>1년</span></div>
+      <div id="puck"></div>
+      <div class="labels" id="labels-b"><span>1일</span><span>1주</span><span>1달</span><span>1년</span></div>
+    </div>
+  </div>
+</div>
+
+<svg id="cursor" width="30" height="30" viewBox="0 0 30 30">
+  <path d="M3 2.2v21.6l5.6-5.3 3.6 8.2 3.9-1.7-3.5-8h7.8Z" fill="#0b0b0c" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>
+
+<script>
+"use strict";
+// Everything on screen is a pure function of t. seek(t) sets every style; there
+// are no transitions, timers or state carried from one frame to the next.
+const BPM = 128;
+const BEAT = 60 / BPM;           // 0.46875 s
+const T = 32 * BEAT;             // 8 bars = 15.0 s
+const k = n => n * BEAT;         // beat number -> seconds
+const VIEW = 1440;
+const wrap = t => ((t % T) + T) % T;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, u) => a + (b - a) * u;
+const $ = id => document.getElementById(id);
+
+// ---------------------------------------------------------------- springs
+// Closed-form unit step response of a damped spring (0 before it starts).
+function step(tau, w, z) {
+  if (tau <= 0) return 0;
+  if (z >= 1) return 1 - Math.exp(-w * tau) * (1 + w * tau);
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * tau) * (Math.cos(wd * tau) + (z * w / wd) * Math.sin(wd * tau));
+}
+// Spring released from x0 with velocity v0 toward x1.
+function springFrom(x0, v0, x1, tau, w, z) {
+  const c1 = x0 - x1;
+  if (z >= 1) return x1 + (c1 + (v0 + w * c1) * tau) * Math.exp(-w * tau);
+  const wd = w * Math.sqrt(1 - z * z);
+  const c2 = (v0 + z * w * c1) / wd;
+  return x1 + Math.exp(-z * w * tau) * (c1 * Math.cos(wd * tau) + c2 * Math.sin(wd * tau));
+}
+// A value whose target changes many times: one spring per change, summed.
+// Events repeat every T, so the sum also includes the previous loop's springs
+// (s(tau + T)); that makes the value, and its velocity, identical at 0 and T.
+// Event times are given in beats.
+function track(events, w = 17, z = 0.82) {
+  const sorted = events.map(e => ({ t: k(e[0]), v: e[1], w: e[2] ?? w, z: e[3] ?? z })).sort((a, b) => a.t - b.t);
+  const base = sorted[sorted.length - 1].v;
+  let prev = base;
+  const deltas = sorted.map(e => { const d = e.v - prev; prev = e.v; return { ...e, d }; });
+  return t => {
+    const tt = wrap(t);
+    let v = base;
+    for (const e of deltas) v += e.d * (step(tt - e.t, e.w, e.z) + step(tt - e.t + T, e.w, e.z));
+    return v;
+  };
+}
+const crit = (tau, w) => step(tau, w, 1);
+
+// ---------------------------------------------------------------- color (OKLab)
+function hexToOklab(hex) {
+  const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map(u => u <= 0.04045 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4));
+  const l = Math.cbrt(0.4122214708 * c[0] + 0.5363325363 * c[1] + 0.0514459929 * c[2]);
+  const m = Math.cbrt(0.2119034982 * c[0] + 0.6806995451 * c[1] + 0.1073969566 * c[2]);
+  const s = Math.cbrt(0.0883024619 * c[0] + 0.2817188376 * c[1] + 0.6299787005 * c[2]);
+  return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+          1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+          0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+}
+function oklabToCss([L, a, b]) {
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+  const lin = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+               -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+               -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s];
+  const g = lin.map(u => { u = clamp(u, 0, 1); return Math.round(255 * (u <= 0.0031308 ? 12.92 * u : 1.055 * Math.pow(u, 1 / 2.4) - 0.055)); });
+  return `rgb(${g[0]},${g[1]},${g[2]})`;
+}
+function colorTrack(events, w = 15) {
+  const labs = events.map(e => [e[0], hexToOklab(e[1]), e[2] ?? w]);
+  const ch = [0, 1, 2].map(i => track(labs.map(e => [e[0], e[1][i], e[2], 1])));
+  return t => oklabToCss(ch.map(f => f(t)));
+}
+
+// ---------------------------------------------------------------- the timeline (in beats)
+const INK = "#0b0b0c", HOVER = "#262629", UP = "#f0364a", PAPER = "#ffffff", OFF = "#dcd8d1";
+
+// Shape geometry: [beat, target].
+const shapeW = track([[1, 380], [3, 360], [7, 460], [12, 300], [14, 480], [17, 680, 14, 0.82], [21, 440], [24, 400], [28, 440], [30, 256]]);
+const shapeH = track([[1, 132], [3, 76], [7, 92], [12, 84], [14, 76], [17, 520, 14, 0.82], [21, 150], [24, 300], [28, 76], [30, 68]]);
+const shapeR = track([[1, 30], [3, 38], [7, 46], [12, 42], [14, 38], [17, 40], [21, 75], [24, 36], [28, 38], [30, 34]]);
+const shapeC = colorTrack([[1, PAPER], [3, INK], [7, PAPER], [14, INK], [21, UP], [24, PAPER], [28, INK], [31, HOVER]]);
+
+// Camera zoom in log space.
+const camLog = track([[1, 2.7], [7, 2.35], [12, 3.2], [14, 2.3], [17, 1.5], [21, 2.3], [24, 2.2], [28, 3.0], [30, 3.1]].map(e => [e[0], Math.log(e[1])]), 9, 1);
+const camScale = t => Math.exp(camLog(t));
+
+// Clicks: mouse down 70 ms before the beat, up (and the action) on the beat.
+const CLICKS = [1, 3, 13, 15, 16, 21];
+const HOLDS = [[4, 6], [8, 11]];
+const dn = 0.07 / BEAT;
+const downEv = [];
+for (const b of CLICKS) downEv.push([b - dn, 1, 40, 0.9], [b, 0, 30, 0.85]);
+for (const [d, u] of HOLDS) downEv.push([d, 1, 40, 0.9], [u, 0, 30, 0.85]);
+const cursorDown = track(downEv);
+
+// Shape press + pops (button drop, prayer accepted, counter lands, toast tick).
+const pressAmt = { 1: 0.03, 3: 0.015, 13: 0.025, 15: 0.008, 16: 0.008, 21: 0.008 };
+const pressEv = [];
+for (const b of CLICKS) pressEv.push([b - dn, 1 - pressAmt[b], 34, 0.8], [b, 1, 26, 0.8]);
+pressEv.push([4, 0.965, 20, 0.85], [6, 1.045, 30, 0.8], [6.3, 1, 20, 0.8]);
+pressEv.push([0, 1.06, 30, 0.8], [0.3, 1, 18, 0.8]);
+pressEv.push([23, 1.06, 30, 0.8], [23.3, 1, 18, 0.8]);
+pressEv.push([29, 1.03, 30, 0.8], [29.25, 1, 18, 0.8]);
+const shapeScale = track(pressEv);
+
+// Cursor path in world coordinates (shape centre is the origin). [beat, x, y, w, z]
+const CUR = [
+  [1.4, 210, 84], [2.3, 40, -12], [3.4, 112, 12],
+  [6.4, 150, 76], [7.3, -22, 0],
+  [8.1, 122, 2, 10, 0.95], [9.3, 232, 4, 9, 0.95],      // drag to max, then past it
+  [11.3, 60, 74], [12.3, 104, 8], [14.3, 58, 6], [15.45, 175, 6], [16.4, 120, 120],
+  [18.3, 245, 20], [19.55, 300, -37], [20.4, 248, -198],
+  [21.4, 176, 112], [23.6, 236, 140], [27.5, 160, 74], [30.3, 30, 14],
+];
+const curX = track(CUR.map(e => [e[0], e[1], e[3] ?? 13, e[4] ?? 0.9]));
+const curY = track(CUR.map(e => [e[0], e[2], e[3] ?? 13, e[4] ?? 0.9]));
+
+// Content layers: [enter, exit] in beats. An exit past 32 wraps into the next loop.
+const LAYERS = {
+  "L-button": [30, 33], "L-account": [1, 3], "L-hold": [3, 7], "L-slider": [7, 12], "L-row": [12, 14],
+  "L-chart": [17, 21], "L-counter": [21, 24], "L-candles": [24, 28], "L-toast": [28, 30],
+};
+const PUCK = [12, 21], LABELS = [14, 21];
+// Text swaps need their own timing: the old content leaves fast, the new one
+// waits a moment before it fades in, so they never overlap at full opacity.
+function presence(tt, e, x) {
+  console.assert(x - e < 32, "presence window longer than the loop", e, x);
+  const E = k(e), X = k(x);
+  const one = u => { const p = crit(u - E - 0.06, 30), q = crit(u - X, 46); return { a: p * (1 - q), p, q }; };
+  const A = one(tt), B = one(tt + T);
+  return A.a >= B.a ? A : B;
+}
+function applyPresence(el, tt, e, x, extra = "") {
+  const { a, p, q } = presence(tt, e, x);
+  const blur = 9 * (1 - p) + 9 * q;
+  const sc = 1 - 0.035 * (1 - p) + 0.02 * q;
+  el.style.opacity = a.toFixed(4);
+  el.style.visibility = a < 0.002 ? "hidden" : "visible";
+  el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : "none";
+  el.style.transform = `${extra} ${Math.abs(sc - 1) > 1e-4 ? `scale(${sc.toFixed(4)})` : ""}`;
+  return a;
+}
+const fmtPct = (v, d = 1) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d) + "%";
+
+// ---------------------------------------------------------------- button
+const arrowY = track([[31, -2, 20, 0.8], [0, -5, 26, 0.8], [0.3, 0, 16, 0.85], [1, 0]]);
+
+// ---------------------------------------------------------------- account sparkline
+const SPARK = [0.18, 0.24, 0.2, 0.32, 0.3, 0.42, 0.4, 0.5, 0.56, 0.52, 0.66, 0.95];
+const sparkDraw = tt => lerp(0.8, 1, step(tt - k(2), 16, 0.85));
+
+// ---------------------------------------------------------------- hold to pray
+function holdProgress(tt) {
+  if (tt < k(4)) return 0;
+  if (tt >= k(6)) return 1;
+  return Math.pow((tt - k(4)) / (k(6) - k(4)), 1.3);
+}
+
+// ---------------------------------------------------------------- hope slider (stretches past max)
+const S_W = 240, S_L = -118, S0 = 0.4;
+const rubber = over => over * 0.5 / (1 + over / 150);
+const sliderRaw = tt => S0 + (curX(clamp(tt, k(8), k(11))) - curX(k(8))) / S_W;
+const overHeld = tt => Math.max(0, (sliderRaw(tt) - 1) * S_W);
+function over(tt) {
+  if (tt < k(8) || tt > k(12.5)) return 0;
+  if (tt <= k(11)) return overHeld(tt);
+  // released: spring back from wherever it was, keeping its velocity
+  const v0 = (overHeld(k(11)) - overHeld(k(11) - 1 / 240)) * 240;
+  return springFrom(overHeld(k(11)), v0, 0, tt - k(11), 18, 0.72);
+}
+const sliderVal = tt => tt < k(8) ? S0 : clamp(sliderRaw(tt), 0, 1);
+
+// ---------------------------------------------------------------- puck: toggle knob -> tab indicator
+// Two edges on different springs: the leading edge is stiff, the trailing one soft.
+const FAST = [22, 0.82], SLOW = [12, 0.9];
+const puckL = track([[12, 32, 40, 1], [13, 76, ...SLOW], [14, -234, ...FAST], [15, 0, ...SLOW], [16, 117, ...SLOW], [21.2, 32, 40, 1]]);
+const puckR = track([[12, 88, 40, 1], [13 - dn, 98, 30, 0.85], [13, 132, ...FAST], [14, -117, ...SLOW], [15, 117, ...FAST], [16, 234, ...FAST], [21.2, 88, 40, 1]]);
+const puckH = track([[12, 56, 40, 1], [14, 64], [21.2, 56, 40, 1]]);
+const groupX = track([[12, 0, 40, 1], [17, -76, 15, 0.85], [21.2, 0, 40, 1]]);
+const groupY = track([[12, 0, 40, 1], [17, -198, 15, 0.85], [21.2, 0, 40, 1]]);
+const trackC = colorTrack([[12, OFF, 40], [13, UP, 30]]);
+
+// ---------------------------------------------------------------- chart (fictional data)
+const VALUES = [0, -1.2, -2.8, -3.7, -2.1, -2.9, 0.8, 3.5, 2.6, 7.9, 12.4, 18.6];
+const PX = i => -300 + i * 600 / 11;
+const PY = v => 190 - (v + 6) / 26 * 240;
+const PTS = VALUES.map((v, i) => [PX(i), PY(v)]);
+function smoothPath(p) {
+  let d = `M${p[0][0].toFixed(1)} ${p[0][1].toFixed(1)}`;
+  for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[Math.max(0, i - 1)], p1 = p[i], p2 = p[i + 1], p3 = p[Math.min(p.length - 1, i + 2)];
+    const s = 1 / 6;
+    d += `C${(p1[0] + (p2[0] - p0[0]) * s).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) * s).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) * s).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) * s).toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+const chartDraw = tt => crit(tt - k(17.25), 6.5);
+// Hover is real hit-testing on the cursor; crossing times are found once by
+// sampling the (pure) cursor function.
+const hoverIdx = u => clamp(Math.round((curX(u) + 300) / (600 / 11)), 0, 11);
+const HOVER_ON = k(19) - 0.06, HOVER_OFF = k(21) - 0.1;
+let hoverSwitch = HOVER_ON;
+for (let u = HOVER_ON; u < HOVER_OFF; u += 0.001) if (hoverIdx(u) !== hoverIdx(HOVER_ON)) { hoverSwitch = u; break; }
+const tipX = track([[17, PTS[10][0], 40, 1], [hoverSwitch / BEAT, PTS[11][0], 20, 0.85]]);
+const tipY = track([[17, PTS[10][1], 40, 1], [hoverSwitch / BEAT, PTS[11][1], 20, 0.85]]);
+
+// ---------------------------------------------------------------- counter (odometer)
+const Q_TARGET = 18.6;
+function counterVal(tt) {
+  const u = clamp((tt - k(21.2)) / (k(23) - k(21.2)), 0, 1);
+  return Q_TARGET * (1 - Math.pow(1 - u, 3));
+}
+const PLACES = [1, 0, -1, -2];  // tens, ones, tenths, hundredths
+const DIGIT_H = 76;
+
+// ---------------------------------------------------------------- candles
+const CANDLES = [[-120, 92, 42], [-40, 56, 74], [40, 2, 118], [120, -64, 216]]; // x, body bottom, body height
+const candleGrow = i => tt => step(tt - k(24 + i), 16, 0.8);
+const CARD_TOP = -150;
+function candlePush(tt) {
+  const [, bottom, h] = CANDLES[3];
+  const top = bottom - h * candleGrow(3)(tt) - 12;   // wick above the body
+  // the card lets go when the candles leave
+  return Math.max(0, (CARD_TOP + 20) - top) * (1 - step(tt - k(28), 18, 0.85));
+}
+
+// ---------------------------------------------------------------- sounds
+// Each UI sound is placed by its measured peak (see audio/mix.py).
+window.SOUNDS = [
+  [k(1), "click"], [k(2), "sad"], [k(3), "click"], [k(4), "grab"], [k(6), "hold"], [k(6), "success"],
+  [k(8), "grab"], [k(11), "release"], [k(13), "toggle"], [k(15), "tab"], [k(16), "tab"],
+  [k(19), "tick"], [k(20), "tick"], [k(21), "click"],
+  ...[21.5, 21.75, 22, 22.25, 22.5, 22.75].map((b, i) => [k(b), "roll" + i]), [k(23), "success"],
+  ...[0, 1, 2, 3].map(i => [k(24 + i), "candle" + i]), [k(28), "toast"], [k(29), "tick"],
+];
+window.T = T;
+
+// ---------------------------------------------------------------- build static bits
+$("A-line").setAttribute("d", "M" + SPARK.map((v, i) => `${(i * 332 / 11).toFixed(1)} ${(3 + v * 24).toFixed(1)}`).join("L"));
+$("C-line").setAttribute("d", smoothPath(PTS));
+$("C-zero").setAttribute("d", `M-316 ${PY(0).toFixed(1)}H316`);
+$("C-months").innerHTML = [0, 3, 6, 9, 11].map(i => `<text x="${PX(i).toFixed(1)}" y="222">${i + 1}월</text>`).join("");
+{
+  const q = $("Q-num");
+  const span = t => { const s = document.createElement("span"); s.textContent = t; return s; };
+  q.appendChild(span("+"));
+  for (const p of PLACES) {
+    if (p === -1) q.appendChild(span("."));
+    const w = document.createElement("div");
+    w.className = "wheel";
+    w.innerHTML = `<div>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => `<span>${d}</span>`).join("")}</div>`;
+    w.dataset.place = p;
+    q.appendChild(w);
+  }
+  q.appendChild(span("%"));
+}
+$("K-g").innerHTML = CANDLES.map((c, i) => `<line id="kw${i}" stroke="#f0364a" stroke-width="3" stroke-linecap="round"/><rect id="kb${i}" fill="#f0364a" rx="6"/>`).join("");
+const wheels = [...document.querySelectorAll(".wheel")];
+
+// ---------------------------------------------------------------- seek
+function seek(t) {
+  const tt = wrap(t);
+  const s = camScale(tt);
+
+  // shape
+  const ov = over(tt), st = rubber(ov), push = candlePush(tt);
+  const w = shapeW(tt) + st, h = shapeH(tt) - 0.1 * st + push;
+  const r = Math.min(shapeR(tt), w / 2, h / 2);
+  const cx = st / 2, cy = -push / 2;
+  Object.assign($("shape").style, {
+    left: `${cx - w / 2}px`, top: `${cy - h / 2}px`, width: `${w}px`, height: `${h}px`,
+    borderRadius: `${r}px`, background: shapeC(tt), transform: `scale(${shapeScale(tt).toFixed(5)})`,
+  });
+
+  // camera: centre on the shape, zoom so the state fills the frame
+  const camX = cx * 0.6, camY = cy * 0.6;
+  $("world").style.transform = `translate(${VIEW / 2 - s * camX}px, ${VIEW / 2 - s * camY}px) scale(${s})`;
+
+  // layers
+  const on = {};
+  for (const [id, [e, x]] of Object.entries(LAYERS)) on[id] = applyPresence($(id), tt, e, x, "translate(-50%,-50%)") > 0.002;
+
+  // button
+  $("B-arrow").style.transform = `translateY(${arrowY(tt).toFixed(2)}px)`;
+
+  // account
+  if (on["L-account"]) {
+    $("A-line").setAttribute("stroke-dasharray", `${sparkDraw(tt).toFixed(4)} 2`);
+    applyPresence($("A-v0"), tt, 0.5, 2);
+    applyPresence($("A-v1"), tt, 2, 3);
+  }
+
+  // hold to pray
+  if (on["L-hold"]) {
+    $("H-fill").style.width = `${(holdProgress(tt) * 100).toFixed(3)}%`;
+    applyPresence($("H-l0"), tt, 2.5, 5);
+    applyPresence($("H-l1"), tt, 5, 6);
+    applyPresence($("H-l2"), tt, 6, 7);
+  }
+
+  // hope slider
+  if (on["L-slider"]) {
+    const v = sliderVal(tt);
+    $("L-slider").style.width = `${460 + st}px`;
+    $("L-slider").style.height = `${92 - 0.1 * st}px`;
+    $("S-track").style.width = `${S_W + st}px`;
+    $("S-track").style.top = `${40 - 0.05 * st}px`;
+    $("S-fill").style.width = `${v * S_W + st}px`;
+    $("S-knob").style.left = `${v * S_W + st}px`;
+    const g = step(tt - k(8), 26, 0.8) - step(tt - k(11), 20, 0.8);
+    $("S-knob").style.transform = `scale(${(1 + 0.18 * g).toFixed(4)})`;
+    const pct = Math.round(v * 100 + ov / S_W * 100);
+    $("S-val").textContent = pct + "%";
+    $("S-val").style.color = pct >= 100 ? "var(--up)" : "var(--ink)";
+  }
+
+  // toggle row track
+  if (on["L-row"]) $("R-track").style.background = trackC(tt);
+
+  // puck + tab labels
+  {
+    const L = puckL(tt), R = puckR(tt), ph = puckH(tt);
+    $("group").style.transform = `translate(${-240 + groupX(tt)}px, ${-38 + groupY(tt)}px)`;
+    const pk = $("puck");
+    Object.assign(pk.style, { left: `${240 + L}px`, top: `${38 - ph / 2}px`, width: `${R - L}px`, height: `${ph}px`, borderRadius: `${ph / 2}px` });
+    applyPresence(pk, tt, ...PUCK);
+    const la = presence(tt, ...LABELS);
+    for (const id of ["labels-w", "labels-b"]) applyPresence($(id), tt, ...LABELS);
+    $("labels-b").style.clipPath = `inset(${38 - ph / 2}px ${240 - R}px ${38 - ph / 2}px ${240 + L}px round ${ph / 2}px)`;
+    $("group-bg").style.opacity = (crit(tt - k(17) - 0.05, 16) * la.a).toFixed(4);
+  }
+
+  // chart
+  if (on["L-chart"]) {
+    const d = chartDraw(tt);
+    $("C-line").setAttribute("stroke-dasharray", `${d.toFixed(4)} 2`);
+    // the draw head carries the number with it
+    const fi = d * 11, i0 = Math.min(10, Math.floor(fi)), u = fi - i0;
+    const hv = lerp(VALUES[i0], VALUES[i0 + 1], u);
+    const hx = lerp(PTS[i0][0], PTS[i0 + 1][0], u), hy = PY(hv);
+    $("C-head").setAttribute("cx", hx.toFixed(2)); $("C-head").setAttribute("cy", hy.toFixed(2));
+    $("C-head").setAttribute("r", (6 * clamp(d * 20, 0, 1) * (1 - crit(tt - HOVER_ON, 30))).toFixed(2));
+    $("C-value").textContent = fmtPct(hv);
+    $("C-value").style.color = hv >= 0 ? "var(--up)" : "rgba(255,255,255,.6)";
+    const hov = crit(tt - HOVER_ON, 28) * (1 - crit(tt - HOVER_OFF, 40));
+    const x = tipX(tt), y = tipY(tt);
+    $("C-guide").setAttribute("x1", x.toFixed(2)); $("C-guide").setAttribute("x2", x.toFixed(2));
+    $("C-guide").style.opacity = hov.toFixed(3);
+    $("C-hot").setAttribute("cx", x.toFixed(2)); $("C-hot").setAttribute("cy", y.toFixed(2));
+    $("C-hot").setAttribute("r", (7 * hov).toFixed(2));
+    const tip = $("C-tip"), tw = tip.offsetWidth;
+    const tx = clamp(x, -340 + 20 + tw / 2, 340 - 20 - tw / 2);
+    tip.style.transform = `translate(${340 + tx - tw / 2}px, ${260 + y - 54 + 6 * (1 - hov)}px)`;
+    tip.style.opacity = hov.toFixed(3);
+    applyPresence($("tip0"), tt, 17, hoverSwitch / BEAT);
+    applyPresence($("tip1"), tt, hoverSwitch / BEAT, 21);
+  }
+
+  // counter: odometer wheels, lower digits spin faster
+  if (on["L-counter"]) {
+    const v = counterVal(tt);
+    for (const wl of wheels) {
+      const p = +wl.dataset.place;
+      // the lowest wheel turns continuously; each higher wheel only turns while
+      // the wheel below it rolls from 9 to 0 (a real odometer carry)
+      const n = v / Math.pow(10, p);
+      const pos = p === PLACES[PLACES.length - 1] ? n % 10 : (Math.floor(n) + Math.max(0, (v / Math.pow(10, p - 1)) % 10 - 9)) % 10;
+      wl.firstChild.style.transform = `translateY(${(-pos * DIGIT_H).toFixed(2)}px)`;
+      if (p === 1) wl.style.opacity = clamp(v - 9, 0, 1).toFixed(3);
+    }
+    applyPresence($("Q-l0"), tt, 20.5, 23);
+    applyPresence($("Q-l1"), tt, 23, 24);
+  }
+
+  // candles: one red candle per beat, the last one pushes the card open
+  if (on["L-candles"]) {
+    const H = 300 + push;
+    $("L-candles").style.height = `${H}px`;
+    const svg = $("K-svg");
+    svg.setAttribute("height", H);
+    svg.setAttribute("viewBox", `-200 ${150 - H} 400 ${H}`);
+    CANDLES.forEach(([x, bottom, hh], i) => {
+      const g = candleGrow(i)(tt);
+      const top = bottom - hh * g;
+      const b = $("kb" + i), wk = $("kw" + i);
+      b.setAttribute("x", x - 22); b.setAttribute("width", 44);
+      b.setAttribute("y", top.toFixed(2)); b.setAttribute("height", Math.max(0, hh * g).toFixed(2));
+      wk.setAttribute("x1", x); wk.setAttribute("x2", x);
+      wk.setAttribute("y1", (top - 12 * g).toFixed(2)); wk.setAttribute("y2", (bottom + 10 * g).toFixed(2));
+      wk.style.opacity = g > 0.01 ? 1 : 0;
+    });
+    for (let i = 0; i < 4; i++) applyPresence($("K-l" + i), tt, 24 + i - (i === 0 ? 0.5 : 0), i < 3 ? 25 + i : 28);
+  }
+
+  // toast
+  if (on["L-toast"]) {
+    applyPresence($("T-v0"), tt, 27.5, 29);
+    applyPresence($("T-v1"), tt, 29, 30);
+  }
+
+  // cursor (screen space; scales gently with zoom like a screen recording)
+  const sx = VIEW / 2 + s * (curX(tt) - camX), sy = VIEW / 2 + s * (curY(tt) - camY);
+  const cs = 1.45 * Math.pow(s / 2.2, 0.3) * (1 - 0.12 * cursorDown(tt));
+  $("cursor").style.transform = `translate(${(sx - 3).toFixed(2)}px, ${(sy - 2).toFixed(2)}px) scale(${cs.toFixed(4)})`;
+}
+
+window.seek = seek;
+window.ready = document.fonts.load('700 20px "Pretendard"', "제발 올라라0123").then(() => document.fonts.ready).then(() => { seek(0); return true; });
+// Preview in a browser: ?t=3.2 freezes a frame, otherwise it plays.
+const q = new URLSearchParams(location.search);
+if (q.has("t")) window.ready.then(() => seek(parseFloat(q.get("t"))));
+else if (!q.has("render")) { const t0 = performance.now(); const loop = () => { seek((performance.now() - t0) / 1000); requestAnimationFrame(loop); }; window.ready.then(loop); }
+</script>
+</body>
+</html>
