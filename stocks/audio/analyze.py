@@ -81,37 +81,62 @@ A = np.vstack([idx, np.ones_like(idx)]).T
 resid_ms = (beats - (period * idx + t0)) * 1000
 bpm = 60 / period
 
-# 5) downbeat: harmonic change (bass + chords, 40..1000 Hz) right after each beat
+# 5) downbeat: harmonic change between the bar before and the bar after each
+#    beat (40..1000 Hz). Chords change on bar lines, so phase 0 of the bar wins.
 S_lin = stft_mag(mono, 8192, sr // 100)
 f = np.fft.rfftfreq(8192, 1 / sr)
 band = (f > 40) & (f < 1000)
 spec_t = (np.arange(S_lin.shape[0]) * (sr // 100) + 4096) / sr
 grid = t0 + period * np.arange(int((t_frames[-1] - t0) / period) - 1)
+
+
+def unit(v):
+    n = np.linalg.norm(v)
+    return v / n if n > 1e-12 else None
+
+
 nov = []
 for tb in grid:
-    pre = (spec_t > tb - 0.45) & (spec_t < tb - 0.05)
-    post = (spec_t > tb + 0.05) & (spec_t < tb + 0.45)
-    if pre.sum() == 0 or post.sum() == 0:
-        nov.append(0)
-        continue
-    u = S_lin[pre][:, band].mean(0)
-    v = S_lin[post][:, band].mean(0)
-    u, v = u / np.linalg.norm(u), v / np.linalg.norm(v)
-    nov.append(1 - float(u @ v))
+    pre = (spec_t > tb - 4 * period) & (spec_t < tb - 0.03)
+    post = (spec_t > tb + 0.03) & (spec_t < tb + 4 * period)
+    u = unit(S_lin[pre][:, band].mean(0)) if pre.any() else None
+    v = unit(S_lin[post][:, band].mean(0)) if post.any() else None
+    nov.append(np.nan if u is None or v is None else 1 - float(u @ v))
 nov = np.array(nov)
-phase_scores = [nov[p::4].mean() for p in range(4)]
+# Low-band (30..62 Hz, kick only) accent: the bar's first kick is played harder.
+low = (f > 30) & (f < 62)
+low_e = S_lin[:, low].sum(1)
+acc = np.array([low_e[(spec_t > tb) & (spec_t < tb + 0.12)].mean() for tb in grid])
+z = lambda v: (v - np.nanmean(v)) / (np.nanstd(v) + 1e-12)
+score = z(acc) + 0.5 * np.nan_to_num(z(nov))
+harm_scores = [float(np.nanmean(nov[p::4])) for p in range(4)]
+phase_scores = [float(np.mean(score[p::4])) for p in range(4)]
 db_phase = int(np.argmax(phase_scores))
 downbeats = grid[db_phase::4]
 
-# 6) start on the downbeat that begins the second pass of the loop (so the cut
-#    region's pre-roll is identical to what the loop itself provides)
+# 6) which downbeat is bar 1 of the loop: the one with the biggest impact
+#    (the band stops for half a beat, then hits). Broadband energy just after vs
+#    just before. Take its second occurrence, so the pre-roll before the cut is
+#    the loop itself.
+hf = (f > 60) & (f < 12000)
+hf_e = S_lin[:, hf].sum(1)
+impact = []
+for tb in downbeats:
+    a = hf_e[(spec_t > tb) & (spec_t < tb + 0.25)].mean()
+    m = (spec_t > tb - 0.2) & (spec_t < tb - 0.02)
+    b = hf_e[m].mean() if m.any() else np.nan
+    impact.append(a / (b + 1e-9))
+impact = np.nan_to_num(np.array(impact))  # no pre-roll at the file start -> 0
+# Score each bar position of the LOOP_BARS cycle by its median impact over all
+# passes, so a one-off (e.g. the count-in -> band entrance) can't win.
+bar_pos_score = [float(np.median(impact[p::LOOP_BARS])) for p in range(LOOP_BARS)]
+best_pos = int(np.argmax(bar_pos_score))
+cands = downbeats[best_pos::LOOP_BARS]
 # Snap to the nearest whole BPM when the measurement is that close, so the loop
 # is a whole number of samples and matches the video length exactly.
 bpm_used = round(bpm) if abs(bpm - round(bpm)) < 0.01 else bpm
 bar_len = 4 * 60 / bpm_used
-first_drum_bar = downbeats[np.argmin(np.abs(downbeats - beats[0]))]
-start = first_drum_bar + LOOP_BARS * bar_len
-start = downbeats[np.argmin(np.abs(downbeats - start))]
+start = cands[1] if len(cands) > 1 else cands[0]
 loop_len = LOOP_BARS * bar_len
 
 i0 = int(round(start * sr))
@@ -135,7 +160,11 @@ report = {
     "beats_detected": int(len(beats)),
     "grid_residual_ms": {"mean_abs": round(float(np.abs(resid_ms).mean()), 3), "max_abs": round(float(np.abs(resid_ms).max()), 3)},
     "downbeat_phase_scores": [round(s, 4) for s in phase_scores],
+    "harmonic_change_scores": [round(s, 4) for s in harm_scores],
     "downbeat_phase": db_phase,
+    "impact_downbeats_s": [round(float(c), 3) for c in cands],
+    "bar_position_median_impact": [round(v, 2) for v in bar_pos_score],
+    "impact_top": sorted([(round(float(i), 2), round(float(d), 3)) for i, d in zip(impact, downbeats)], reverse=True)[:6],
     "loop_start_s": round(float(start), 4),
     "loop_len_s": round(float(loop_len), 4),
     "loop_seam_maxdiff": round(float(seam), 5),

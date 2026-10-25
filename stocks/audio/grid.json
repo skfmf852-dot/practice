@@ -1,20 +1,68 @@
 {
-  "bpm": 127.9998,
+  "bpm": 128.0038,
   "bpm_used": 128,
-  "period_s": 0.468751,
-  "beats_detected": 90,
+  "period_s": 0.468736,
+  "beats_detected": 101,
   "grid_residual_ms": {
-    "mean_abs": 0.726,
-    "max_abs": 3.784
+    "mean_abs": 1.861,
+    "max_abs": 15.787
   },
   "downbeat_phase_scores": [
-    0.2649,
-    0.0133,
-    0.0081,
-    0.0795
+    0.6965,
+    -0.1521,
+    -0.0539,
+    -0.5173
+  ],
+  "harmonic_change_scores": [
+    0.3163,
+    0.3264,
+    0.3254,
+    0.2882
   ],
   "downbeat_phase": 0,
-  "loop_start_s": 16.8725,
+  "impact_downbeats_s": [
+    1.877,
+    16.877,
+    31.876,
+    46.876
+  ],
+  "bar_position_median_impact": [
+    1.52,
+    2.0,
+    1.0,
+    1.11,
+    1.36,
+    1.06,
+    1.26,
+    1.19
+  ],
+  "impact_top": [
+    [
+      6.83,
+      1.877
+    ],
+    [
+      2.0,
+      31.876
+    ],
+    [
+      2.0,
+      16.877
+    ],
+    [
+      1.52,
+      45.001
+    ],
+    [
+      1.52,
+      30.001
+    ],
+    [
+      1.52,
+      15.002
+    ]
+  ],
+  "loop_start_s": 16.8767,
   "loop_len_s": 15.0,
   "loop_seam_maxdiff": 0.0
 }
