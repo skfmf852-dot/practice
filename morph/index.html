@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>One Shape</title>
+<style>
+  @font-face {
+    font-family: "Geist";
+    src: url("fonts/Geist-Variable.woff2") format("woff2");
+    font-weight: 100 900;
+  }
+  :root {
+    --canvas: #e8e6e1;
+    --ink: #0b0b0c;
+    --paper: #ffffff;
+    --accent: #0a84ff;
+  }
+  html, body {
+    margin: 0;
+    width: 1440px;
+    height: 1440px;
+    overflow: hidden;
+    background: var(--canvas);
+    font-family: "Geist", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "tnum" 1, "ss01" 1;
+  }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #shape {
+    position: absolute;
+    overflow: hidden;
+    box-shadow: 0 1px 1.5px rgba(20, 16, 10, .05), 0 10px 28px -10px rgba(20, 16, 10, .16);
+  }
+  .layer { position: absolute; left: 50%; top: 50%; box-sizing: border-box; }
+  .row { display: flex; align-items: center; }
+  svg { display: block; overflow: visible; }
+
+  /* button */
+  #L-button { width: 220px; height: 60px; justify-content: center; gap: 10px; color: #fff; font-size: 19px; font-weight: 550; letter-spacing: -.01em; }
+
+  /* island */
+  #L-island { width: 280px; height: 56px; padding: 0 18px 0 12px; gap: 10px; color: #fff; font-size: 15px; font-weight: 550; }
+  .art { background: var(--accent); display: grid; place-items: center; flex: none; }
+  .bars { margin-left: auto; display: flex; align-items: center; gap: 3px; height: 20px; }
+  .bars i { width: 3px; border-radius: 2px; background: var(--accent); display: block; }
+
+  /* player */
+  #L-player { width: 420px; height: 248px; color: #fff; }
+  #L-player .art { position: absolute; left: 24px; top: 24px; width: 72px; height: 72px; border-radius: 16px; }
+  #P-title { position: absolute; left: 112px; top: 36px; font-size: 22px; font-weight: 600; letter-spacing: -.015em; }
+  #P-artist { position: absolute; left: 112px; top: 66px; font-size: 16px; color: rgba(255,255,255,.55); }
+  #P-track { position: absolute; left: 24px; width: 372px; background: rgba(255,255,255,.16); }
+  #P-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: inherit; }
+  #P-knob { position: absolute; background: #fff; border-radius: 50%; }
+  .ptime { position: absolute; top: 142px; font-size: 13px; color: rgba(255,255,255,.5); }
+  #P-ctrl { position: absolute; left: 0; right: 0; top: 180px; height: 40px; justify-content: center; gap: 46px; }
+
+  /* volume */
+  #L-volume { height: 76px; }
+  #V-icon { position: absolute; left: 22px; top: 24px; }
+  #V-track { position: absolute; left: 76px; height: 10px; top: 33px; border-radius: 5px; background: #e6e3de; }
+  #V-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); }
+  #V-knob { position: absolute; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.14); }
+
+  /* tabs group + puck */
+  #group { position: absolute; left: 50%; top: 50%; width: 456px; height: 72px; }
+  #group-bg { position: absolute; inset: 0; border-radius: 36px; background: rgba(255,255,255,.09); }
+  #puck { position: absolute; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 3px 8px rgba(0,0,0,.08); }
+  .labels { position: absolute; inset: 0; display: flex; padding: 0 6px; font-size: 17px; font-weight: 550; letter-spacing: -.005em; }
+  .labels span { width: 148px; display: grid; place-items: center; }
+  #labels-w { color: rgba(255,255,255,.62); }
+  #labels-b { color: var(--ink); }
+
+  /* chart */
+  #L-chart { width: 680px; height: 480px; color: #fff; }
+  #C-chip { position: absolute; left: 506px; top: 36px; width: 150px; height: 48px; border-radius: 24px; background: rgba(255,255,255,.09); justify-content: center; gap: 10px; font-size: 15px; color: rgba(255,255,255,.75); }
+  .kbd { font-size: 12px; font-weight: 600; padding: 3px 7px; border-radius: 7px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.85); }
+  #C-label { position: absolute; left: 24px; top: 112px; font-size: 15px; color: rgba(255,255,255,.55); }
+  #C-value { position: absolute; left: 24px; top: 134px; font-size: 46px; font-weight: 600; letter-spacing: -.03em; line-height: 1; gap: 14px; }
+  #C-delta { font-size: 15px; font-weight: 600; letter-spacing: 0; color: var(--accent); }
+  #C-svg { position: absolute; left: 0; top: 0; }
+  #C-tip { position: absolute; left: 0; top: 0; padding: 0 12px; height: 34px; border-radius: 12px; background: #fff; color: var(--ink); font-size: 14px; font-weight: 600; white-space: nowrap; }
+  #C-tip .tv { position: absolute; left: 12px; top: 0; height: 34px; display: flex; align-items: center; gap: 8px; }
+  #C-tip .day { color: rgba(11,11,12,.5); font-weight: 500; }
+
+  /* palette */
+  #L-palette { width: 600px; top: 0; color: var(--ink); }
+  #K-input { height: 72px; padding: 0 22px; gap: 12px; font-size: 20px; letter-spacing: -.01em; }
+  #K-ph { color: rgba(11,11,12,.38); }
+  #K-caret { display: inline-block; width: 2px; height: 24px; background: var(--accent); vertical-align: -5px; margin-left: 1px; border-radius: 1px; }
+  #K-esc { margin-left: auto; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 7px; background: #f1efeb; color: rgba(11,11,12,.5); }
+  #K-div { height: 1px; background: #ecebe7; }
+  .krow { position: absolute; left: 8px; right: 8px; height: 52px; border-radius: 13px; padding: 0 16px; gap: 14px; font-size: 16px; font-weight: 500; }
+  .krow svg { color: rgba(11,11,12,.72); flex: none; }
+  .krow .hint { margin-left: auto; font-size: 13px; color: rgba(11,11,12,.42); }
+
+  /* toast */
+  #L-toast { width: 340px; height: 64px; padding: 0 22px 0 18px; gap: 12px; color: #fff; font-size: 17px; font-weight: 550; }
+  #L-toast .undo { margin-left: auto; font-size: 15px; color: rgba(255,255,255,.55); font-weight: 500; }
+
+  #cursor { position: absolute; left: 0; top: 0; transform-origin: 3px 2px; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.28)); }
+</style>
+</head>
+<body>
+<div id="world">
+  <div id="shape">
+    <div class="layer row" id="L-button">
+      <span>Continue</span>
+      <svg id="B-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6.5 18.5 12 13 17.5"/></svg>
+    </div>
+
+    <div class="layer" id="L-loader" style="width:64px;height:64px">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <circle cx="32" cy="32" r="14" stroke="rgba(255,255,255,.18)" stroke-width="3.5"/>
+        <circle id="LD-arc" cx="32" cy="32" r="14" stroke="#fff" stroke-width="3.5" stroke-linecap="round" pathLength="100" transform="rotate(-90 32 32)"/>
+      </svg>
+    </div>
+
+    <div class="layer" id="L-check" style="width:64px;height:64px">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none"><path id="CK-path" d="M22 33l7 7 14-15" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1 1"/></svg>
+    </div>
+
+    <div class="layer row" id="L-island">
+      <div class="art" style="width:32px;height:32px;border-radius:9px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V6.5l9-2V15"/><circle cx="6.5" cy="17" r="2.5" fill="#fff"/><circle cx="15.5" cy="15" r="2.5" fill="#fff"/></svg>
+      </div>
+      <span>Midnight Drive</span>
+      <div class="bars" id="I-bars"><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <div class="layer" id="L-player">
+      <div class="art">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V6.5l9-2V15"/><circle cx="6.5" cy="17" r="2.5" fill="#fff"/><circle cx="15.5" cy="15" r="2.5" fill="#fff"/></svg>
+      </div>
+      <div id="P-title">Midnight Drive</div>
+      <div id="P-artist">Lumen</div>
+      <div id="P-track"><div id="P-fill"></div><div id="P-knob"></div></div>
+      <div class="ptime" id="P-el" style="left:24px">1:07</div>
+      <div class="ptime" id="P-rem" style="right:24px">-2:38</div>
+      <div class="row" id="P-ctrl">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M23 7 11 14l12 7Z"/><path d="M5 7h2.5v14H5Z"/></svg>
+        <svg width="40" height="40" viewBox="0 0 36 36" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path id="PP-a"/><path id="PP-b"/></svg>
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M5 7l12 7-12 7Z"/><path d="M20.5 7H23v14h-2.5Z"/></svg>
+      </div>
+    </div>
+
+    <div class="layer" id="L-volume">
+      <svg id="V-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0b0b0c" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4Z" fill="#0b0b0c"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>
+      <div id="V-track"><div id="V-fill"></div><div id="V-knob"></div></div>
+    </div>
+
+    <div class="layer" id="L-chart">
+      <svg id="C-svg" width="680" height="480" viewBox="-340 -240 680 480" fill="none">
+        <g stroke="rgba(255,255,255,.08)" stroke-width="1">
+          <path d="M-316 -30H316M-316 70H316M-316 170H316"/>
+        </g>
+        <line id="C-guide" x1="0" x2="0" y1="-30" y2="170" stroke="rgba(255,255,255,.22)" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <path id="C-line" stroke="#0a84ff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/>
+        <g id="C-dots"></g>
+        <circle id="C-hot" r="7" fill="#0a84ff" stroke="#fff" stroke-width="3"/>
+        <g id="C-days" fill="rgba(255,255,255,.42)" font-size="13" font-family="Geist" text-anchor="middle"></g>
+      </svg>
+      <div id="C-label">Visitors · This week</div>
+      <div class="row" id="C-value"><span>18,410</span><span id="C-delta">+12.4%</span></div>
+      <div class="row" id="C-chip"><span>Search</span><span class="kbd">⌘K</span></div>
+      <div id="C-tip"><div class="tv" id="tip0"><span class="day">Thu</span><span>2,940</span></div><div class="tv" id="tip1"><span class="day">Fri</span><span>3,310</span></div><span style="visibility:hidden" class="row"><span class="day">Thu</span>&nbsp;&nbsp;<span>2,940</span></span></div>
+    </div>
+
+    <div class="layer" id="L-palette">
+      <div class="row" id="K-input">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="rgba(11,11,12,.55)" stroke-width="1.75" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2 17 17"/></svg>
+        <div><span id="K-text"></span><span id="K-caret"></span><span id="K-ph">Type a command…</span></div>
+        <span id="K-esc">esc</span>
+      </div>
+      <div id="K-div"></div>
+      <div id="K-rows" style="position:relative"></div>
+    </div>
+
+    <div class="layer row" id="L-toast">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="14" fill="#0a84ff"/><path d="M9 14.5l3.4 3.4L19.2 11" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Invite sent</span>
+      <span class="undo">Undo</span>
+    </div>
+
+    <div id="group">
+      <div id="group-bg"></div>
+      <div class="labels" id="labels-w"><span>Day</span><span>Week</span><span>Month</span></div>
+      <div id="puck"></div>
+      <div class="labels" id="labels-b"><span>Day</span><span>Week</span><span>Month</span></div>
+    </div>
+  </div>
+</div>
+
+<svg id="cursor" width="30" height="30" viewBox="0 0 30 30">
+  <path d="M3 2.2v21.6l5.6-5.3 3.6 8.2 3.9-1.7-3.5-8h7.8Z" fill="#0b0b0c" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>
+
+<script>
+"use strict";
+// Everything on screen is a pure function of t. seek(t) sets every style; there
+// are no transitions, timers or state carried from one frame to the next.
+const T = 14;          // 7 bars at 120 BPM
+const BEAT = 0.5;
+const VIEW = 1440;
+const wrap = t => ((t % T) + T) % T;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const $ = id => document.getElementById(id);
+
+// ---------------------------------------------------------------- springs
+// Closed-form unit step response of a damped spring (0 before it starts).
+function step(tau, w, z) {
+  if (tau <= 0) return 0;
+  if (z >= 1) return 1 - Math.exp(-w * tau) * (1 + w * tau);
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * tau) * (Math.cos(wd * tau) + (z * w / wd) * Math.sin(wd * tau));
+}
+// Spring released from x0 with velocity v0 toward x1.
+function springFrom(x0, v0, x1, tau, w, z) {
+  const c1 = x0 - x1;
+  if (z >= 1) return x1 + (c1 + (v0 + w * c1) * tau) * Math.exp(-w * tau);
+  const wd = w * Math.sqrt(1 - z * z);
+  const c2 = (v0 + z * w * c1) / wd;
+  return x1 + Math.exp(-z * w * tau) * (c1 * Math.cos(wd * tau) + c2 * Math.sin(wd * tau));
+}
+// A value whose target changes many times: one spring per change, summed.
+// Events repeat every T, so the sum also includes the previous loop's springs
+// (s(tau + T)); that makes the value, and its velocity, identical at 0 and T.
+function track(events, w = 17, z = 0.82) {
+  const sorted = events.map(e => ({ t: e[0], v: e[1], w: e[2] ?? w, z: e[3] ?? z })).sort((a, b) => a.t - b.t);
+  const base = sorted[sorted.length - 1].v;
+  let prev = base;
+  const deltas = sorted.map(e => { const d = e.v - prev; prev = e.v; return { ...e, d }; });
+  return t => {
+    const tt = wrap(t);
+    let v = base;
+    for (const e of deltas) v += e.d * (step(tt - e.t, e.w, e.z) + step(tt - e.t + T, e.w, e.z));
+    return v;
+  };
+}
+const crit = (tau, w) => step(tau, w, 1);
+const deriv = (f, t, h = 1 / 960) => (f(t + h) - f(t - h)) / (2 * h);
+
+// ---------------------------------------------------------------- color (OKLab)
+function hexToOklab(hex) {
+  const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map(u => u <= 0.04045 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4));
+  const l = Math.cbrt(0.4122214708 * c[0] + 0.5363325363 * c[1] + 0.0514459929 * c[2]);
+  const m = Math.cbrt(0.2119034982 * c[0] + 0.6806995451 * c[1] + 0.1073969566 * c[2]);
+  const s = Math.cbrt(0.0883024619 * c[0] + 0.2817188376 * c[1] + 0.6299787005 * c[2]);
+  return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+          1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+          0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+}
+function oklabToCss([L, a, b]) {
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+  const lin = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+               -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+               -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s];
+  const g = lin.map(u => { u = clamp(u, 0, 1); return Math.round(255 * (u <= 0.0031308 ? 12.92 * u : 1.055 * Math.pow(u, 1 / 2.4) - 0.055)); });
+  return `rgb(${g[0]},${g[1]},${g[2]})`;
+}
+function colorTrack(events, w = 15) {
+  const labs = events.map(e => [e[0], hexToOklab(e[1]), e[2] ?? w]);
+  const ch = [0, 1, 2].map(i => track(labs.map(e => [e[0], e[1][i], e[2], 1])));
+  return t => oklabToCss(ch.map(f => f(t)));
+}
+
+// ---------------------------------------------------------------- the timeline
+const INK = "#0b0b0c", HOVER = "#242427", BLUE = "#0a84ff", PAPER = "#ffffff", OFF = "#cbc6be";
+
+// Shape geometry. Each entry is [time, target].
+const shapeW = track([[0.5, 64], [2.0, 280], [2.5, 420, 15, 0.8], [7.0, 132], [8.0, 456], [9.5, 680, 14, 0.82], [11.5, 600], [13.0, 340], [13.5, 220]]);
+const shapeH = track([[0.5, 64], [2.0, 56], [2.5, 248, 15, 0.8], [5.0, 76], [8.0, 72], [9.5, 480, 14, 0.82], [11.5, 349], [12.0, 245], [12.5, 141], [13.0, 64], [13.5, 60]]);
+const shapeR = track([[0.5, 32], [2.0, 28], [2.5, 40], [5.0, 38], [8.0, 36], [9.5, 40], [11.5, 28], [13.0, 32], [13.5, 30]]);
+const shapeC = colorTrack([[0.0, HOVER], [0.5, INK], [1.5, BLUE], [2.0, INK], [5.0, PAPER], [7.0, OFF], [7.5, BLUE, 30], [8.0, INK], [11.5, PAPER], [13.0, INK]]);
+
+// Camera zoom (in log space so zoom-in and zoom-out feel the same speed).
+const camLog = track([[0.5, 5.0], [2.0, 3.3], [2.5, 2.45], [5.0, 2.35], [7.0, 4.0], [8.0, 2.3], [9.5, 1.62], [11.5, 1.8], [12.5, 2.05], [13.0, 3.0], [13.5, 3.4]].map(e => [e[0], Math.log(e[1])]), 9, 1);
+const camScale = t => Math.exp(camLog(t));
+
+// Clicks: mouse down 70 ms before the beat, up (and the action) on the beat.
+const CLICKS = [0.5, 2.5, 3.0, 7.5, 8.5, 9.0, 11.5];
+const DRAGS = [[3.5, 4.5], [5.5, 6.5]];
+const downEvents = [];
+for (const b of CLICKS) downEvents.push([b - 0.07, 1, 40, 0.9], [b, 0, 30, 0.85]);
+for (const [d, u] of DRAGS) downEvents.push([d, 1, 40, 0.9], [u, 0, 30, 0.85]);
+const cursorDown = track(downEvents);
+
+// Shape press: a small squash on clicks plus a pop when the check lands.
+const pressEv = [];
+const pressAmt = { 0.5: 0.035, 2.5: 0.02, 3.0: 0.012, 7.5: 0.03, 8.5: 0.01, 9.0: 0.01, 11.5: 0.008 };
+for (const b of CLICKS) pressEv.push([b - 0.07, 1 - pressAmt[b], 34, 0.8], [b, 1, 26, 0.8]);
+pressEv.push([1.5, 1.07, 30, 0.8], [1.62, 1, 22, 0.8]);
+const shapeScale = track(pressEv);
+
+// Cursor path in world coordinates (shape centre is the origin).
+const CUR = [
+  [0.75, 72, 48], [2.1, 44, 6], [2.62, 0, 76], [3.12, -74, -1],
+  [3.55, 102, -1, 8.5, 0.95],                // scrub
+  [4.6, 150, 72], [5.12, 8, 0],
+  [5.55, 182, 2, 10, 0.95], [5.92, 262, 4, 9, 0.95], // drag to max, then past it
+  [6.62, 120, 70], [7.05, 14, 8], [8.1, -148, 6], [8.62, 0, 6], [9.12, 64, 112],
+  [10.12, 0, 26], [10.74, 100, -11], [11.1, 241, -180], [11.62, 252, 232], [12.7, 150, 108],
+  [13.5, 50, 9],
+];
+const curX = track(CUR.map(e => [e[0], e[1], e[3] ?? 13, e[4] ?? 0.9]));
+const curY = track(CUR.map(e => [e[0], e[2], e[3] ?? 13, e[4] ?? 0.9]));
+
+// Content layers: [enter, exit]. An exit past T wraps into the next loop.
+const LAYERS = {
+  "L-button": [13.5, 14.5], "L-loader": [0.5, 1.5], "L-check": [1.5, 2.0], "L-island": [2.0, 2.5],
+  "L-player": [2.5, 5.0], "L-volume": [5.0, 7.0], "L-chart": [9.5, 11.5], "L-palette": [11.5, 13.0],
+  "L-toast": [13.0, 13.5], "puck": [7.0, 11.5], "labels": [8.0, 11.5],
+};
+// Text swaps need their own timing: the old content leaves fast, the new one
+// waits a beat-fraction before it fades in, so they never overlap at full opacity.
+function presence(tt, e, x) {
+  const one = u => { const p = crit(u - e - 0.06, 30), q = crit(u - x, 46); return { a: p * (1 - q), p, q }; };
+  const A = one(tt), B = one(tt + T);
+  return A.a >= B.a ? A : B;
+}
+function applyPresence(el, tt, e, x, extra = "") {
+  const { a, p, q } = presence(tt, e, x);
+  const blur = 9 * (1 - p) + 9 * q;
+  const sc = 1 - 0.035 * (1 - p) + 0.02 * q;
+  el.style.opacity = a.toFixed(4);
+  el.style.visibility = a < 0.002 ? "hidden" : "visible";
+  el.style.filter = blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : "none";
+  el.style.transform = `${extra} ${Math.abs(sc - 1) > 1e-4 ? `scale(${sc.toFixed(4)})` : ""}`;
+  return a;
+}
+
+const arrowNudge = track([[0.0, 3.5, 20, 0.8], [0.5, 0, 20, 0.8]]);
+
+// ---------------------------------------------------------------- player
+const DUR = 225;               // 3:45
+const P_RATE = 1 / DUR;
+const TRACK_W = 372, TRACK_L = -186;
+function fmt(s) { s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+function progress(tt) {
+  if (tt < 3.5) return 0.30 + (tt > 3.0 ? P_RATE * (tt - 3.0) : 0);
+  const pGrab = 0.30 + P_RATE * 0.5;
+  const held = u => clamp(pGrab + (curX(u) - curX(3.5)) / TRACK_W, 0, 1);
+  if (tt < 4.5) return held(tt);
+  return held(4.5) + P_RATE * (tt - 4.5);
+}
+const playMorph = tt => step(tt - 3.0, 22, 0.85);
+// play triangle split in two quads; pause = two bars. Same point count -> morph.
+const PLAY = [[[10, 7], [19.5, 12.5], [19.5, 23.5], [10, 29]], [[19.5, 12.5], [29, 18], [29, 18], [19.5, 23.5]]];
+const PAUSE = [[[9, 7.5], [15, 7.5], [15, 28.5], [9, 28.5]], [[21, 7.5], [27, 7.5], [27, 28.5], [21, 28.5]]];
+const quadPath = (A, B, k) => "M" + A.map((p, i) => `${lerp(p[0], B[i][0], k).toFixed(2)} ${lerp(p[1], B[i][1], k).toFixed(2)}`).join("L") + "Z";
+
+// ---------------------------------------------------------------- volume
+const V_W = 316, V_L = -134, V0 = 0.45;
+const rubber = over => over * 0.55 / (1 + over / 160);
+function volRaw(tt) { return V0 + (curX(clamp(tt, 5.5, 6.5)) - curX(5.5)) / V_W; }
+function stretchHeld(tt) { return rubber(Math.max(0, (volRaw(tt) - 1) * V_W)); }
+function stretch(tt) {
+  if (tt < 5.5 || tt > 7.2) return 0;
+  if (tt <= 6.5) return stretchHeld(tt);
+  // released: spring back from wherever it was, keeping its velocity
+  const v0 = (stretchHeld(6.5) - stretchHeld(6.5 - 1 / 240)) * 240;
+  return springFrom(stretchHeld(6.5), v0, 0, tt - 6.5, 19, 0.72);
+}
+const volume = tt => tt < 5.5 ? V0 : clamp(volRaw(tt), 0, 1);
+
+// ---------------------------------------------------------------- puck (toggle knob -> tab indicator)
+// Two edges on different springs: the leading edge is stiff, the trailing one soft.
+const FAST = [22, 0.82], SLOW = [12, 0.9];
+const puckL = track([[7.0, -60, 40, 1], [7.5, -4, ...SLOW], [8.0, 74, ...SLOW], [8.5, -222, ...FAST], [9.0, -74, ...SLOW], [11.6, -60, 40, 1]]);
+const puckR = track([[7.0, 4, 40, 1], [7.43, 14, 30, 0.85], [7.5, 60, ...FAST], [8.0, 222, ...FAST], [8.5, -74, ...SLOW], [9.0, 74, ...FAST], [11.6, 4, 40, 1]]);
+const puckH = track([[7.0, 64, 40, 1], [8.0, 60], [11.6, 64, 40, 1]]);
+const groupX = track([[7.0, 0, 40, 1], [9.5, -88, 15, 0.85], [11.6, 0, 40, 1]]);
+const groupY = track([[7.0, 0, 40, 1], [9.5, -180, 15, 0.85], [11.6, 0, 40, 1]]);
+
+// ---------------------------------------------------------------- chart
+const VALUES = [1980, 2410, 2190, 2940, 3310, 2760, 2820];
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const PTS = VALUES.map((v, i) => [-300 + 100 * i, 170 - (v - 1500) / 2000 * 200]);
+function smoothPath(p) {
+  let d = `M${p[0][0]} ${p[0][1].toFixed(1)}`;
+  for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[Math.max(0, i - 1)], p1 = p[i], p2 = p[i + 1], p3 = p[Math.min(p.length - 1, i + 2)];
+    const k = 1 / 6;
+    d += `C${(p1[0] + (p2[0] - p0[0]) * k).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) * k).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) * k).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) * k).toFixed(1)} ${p2[0]} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+const chartDraw = tt => crit(tt - 9.78, 7.2);
+// Hover is real hit-testing on the cursor: the hovered point changes when the
+// cursor crosses the midpoint between two points. Crossing times are found by
+// sampling the (pure) cursor function once at load.
+const hoverIdx = u => clamp(Math.round((curX(u) + 300) / 100), 0, 6);
+const HOVER_ON = 10.42, HOVER_OFF = 11.38;
+let hoverSwitch = HOVER_ON;
+for (let u = HOVER_ON; u < HOVER_OFF; u += 0.001) if (hoverIdx(u) !== hoverIdx(HOVER_ON)) { hoverSwitch = u; break; }
+const tipX = track([[HOVER_ON - 0.2, PTS[3][0], 40, 1], [hoverSwitch, PTS[4][0], 20, 0.85]]);
+const tipY = track([[HOVER_ON - 0.2, PTS[3][1], 40, 1], [hoverSwitch, PTS[4][1], 20, 0.85]]);
+
+// ---------------------------------------------------------------- command palette
+const COMMANDS = [
+  ["Invite teammate", '<circle cx="8" cy="7" r="3"/><path d="M2.5 17c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M16 6v6M13 9h6"/>'],
+  ["New project", '<rect x="3" y="3" width="14" height="14" rx="4"/><path d="M10 7v6M7 10h6"/>'],
+  ["Invoices", '<path d="M5 2.75h6.5L15 6.25v11H5Z"/><path d="M7.75 10h4.5M7.75 13h4.5"/>'],
+  ["Open settings", '<path d="M3.5 6h8M15.5 6h1M3.5 14h1M8.5 14h8"/><circle cx="13.5" cy="6" r="1.9"/><circle cx="6.5" cy="14" r="1.9"/>'],
+  ["Inventory report", '<path d="M3 6.5 10 3l7 3.5v7L10 17l-7-3.5Z"/><path d="M3 6.5l7 3.5 7-3.5M10 10v7"/>'],
+];
+const KEYS = [[12.0, "i"], [12.125, "n"], [12.25, "v"], [12.5, "i"]];
+const typed = tt => KEYS.filter(k => tt >= k[0]).map(k => k[1]).join("");
+// "i" keeps rows 0,2,4 (words starting with i); "invi" keeps row 0 only.
+const ROW_OUT = { 1: 12.0, 3: 12.0, 2: 12.5, 4: 12.5 };
+const rowSlot = [0, 1, 2, 3, 4].map(i => track([[11.4, i, 40, 1], [12.0, [0, 1, 1, 2, 2][i], 20, 0.85], [12.5, [0, 1, 1, 2, 2][i], 20, 0.85]]));
+
+// ---------------------------------------------------------------- sounds
+// Each UI sound is placed by its measured peak (see audio/mix.py).
+window.SOUNDS = [
+  [0.5, "click"], [1.5, "success"], [2.5, "click"], [3.0, "click"],
+  [3.5, "grab"], [4.5, "release"], [5.5, "grab"], [6.5, "release"],
+  [7.5, "toggle"], [8.5, "tab"], [9.0, "tab"], [10.5, "tick"], [11.0, "tick"], [11.5, "click"],
+  ...KEYS.map(k => [k[0], "key"]), [13.0, "enter"], [13.0, "toast"],
+];
+window.T = T;
+
+// ---------------------------------------------------------------- build static bits
+const rowsEl = $("K-rows");
+COMMANDS.forEach(([label, icon], i) => {
+  const r = document.createElement("div");
+  r.className = "krow row";
+  r.id = "K-row" + i;
+  r.innerHTML = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${icon}</svg><span>${label}</span>${i === 0 ? '<span class="hint">↵</span>' : ""}`;
+  rowsEl.appendChild(r);
+});
+$("C-line").setAttribute("d", smoothPath(PTS));
+$("C-dots").innerHTML = PTS.map((p, i) => `<circle id="dot${i}" cx="${p[0]}" cy="${p[1].toFixed(1)}" r="4.5" fill="#0b0b0c" stroke="#0a84ff" stroke-width="3"/>`).join("");
+$("C-days").innerHTML = PTS.map((p, i) => `<text x="${p[0]}" y="208">${DAYS[i]}</text>`).join("");
+const barEls = [...$("I-bars").children];
+
+// ---------------------------------------------------------------- seek
+function seek(t) {
+  const tt = wrap(t);
+  const s = camScale(tt);
+
+  // shape
+  const st = stretch(tt);
+  const w = shapeW(tt) + st, h = shapeH(tt) - 0.12 * st;
+  const r = Math.min(shapeR(tt), w / 2, h / 2);
+  const cx = st / 2, cy = 0;
+  const shape = $("shape");
+  Object.assign(shape.style, {
+    left: `${cx - w / 2}px`, top: `${cy - h / 2}px`, width: `${w}px`, height: `${h}px`,
+    borderRadius: `${r}px`, background: shapeC(tt), transform: `scale(${shapeScale(tt).toFixed(5)})`,
+  });
+
+  // camera: centre the shape, zoom so the state fills the frame
+  const camX = cx * 0.6;
+  $("world").style.transform = `translate(${VIEW / 2 - s * camX}px, ${VIEW / 2}px) scale(${s})`;
+
+  // layers
+  const C = "translate(-50%,-50%)";
+  for (const [id, [e, x]] of Object.entries(LAYERS)) {
+    if (id === "puck" || id === "labels") continue;
+    const el = $(id);
+    const a = applyPresence(el, tt, e, x, id === "L-palette" ? "translateX(-50%)" : C);
+    el.dataset.on = a > 0.002 ? "1" : "0";
+  }
+
+  // button
+  $("B-arrow").style.transform = `translateX(${arrowNudge(tt).toFixed(2)}px)`;
+
+  // loader: indeterminate arc, then fills on the beat
+  if ($("L-loader").dataset.on === "1") {
+    const frac = lerp(26, 100, step(tt - 1.0, 9, 1));
+    const rot = 400 * (tt - 0.5) + 90 * step(tt - 0.5, 8, 1);
+    $("LD-arc").setAttribute("stroke-dasharray", `${frac.toFixed(2)} 100`);
+    $("LD-arc").setAttribute("transform", `rotate(${(-90 + rot).toFixed(2)} 32 32)`);
+  }
+  // check draws itself
+  $("CK-path").setAttribute("stroke-dashoffset", (1 - crit(tt - 1.56, 15)).toFixed(4));
+
+  // island bars
+  barEls.forEach((b, i) => { b.style.height = `${(7 + 6 * (0.5 + 0.5 * Math.sin(tt * 9.4 + i * 1.7)) + 4 * (0.5 + 0.5 * Math.sin(tt * 5.3 + i * 2.9))).toFixed(1)}px`; });
+
+  // player
+  if ($("L-player").dataset.on === "1") {
+    const m = playMorph(tt);
+    $("PP-a").setAttribute("d", quadPath(PLAY[0], PAUSE[0], m));
+    $("PP-b").setAttribute("d", quadPath(PLAY[1], PAUSE[1], m));
+    const p = progress(tt);
+    const g = step(tt - 3.5, 26, 0.8) - step(tt - 4.5, 20, 0.8);
+    const bh = 6 + 4 * g, kd = 12 + 8 * g;
+    Object.assign($("P-track").style, { top: `${124 - bh / 2}px`, height: `${bh}px`, borderRadius: `${bh / 2}px` });
+    $("P-fill").style.width = `${p * TRACK_W}px`;
+    Object.assign($("P-knob").style, { width: `${kd}px`, height: `${kd}px`, left: `${p * TRACK_W - kd / 2}px`, top: `${bh / 2 - kd / 2}px` });
+    $("P-el").textContent = fmt(p * DUR);
+    $("P-rem").textContent = "-" + fmt(DUR - p * DUR);
+  }
+
+  // volume (stretches past max)
+  if ($("L-volume").dataset.on === "1") {
+    const lv = $("L-volume");
+    lv.style.width = `${420 + st}px`;
+    lv.style.height = `${76 - 0.12 * st}px`;
+    const v = volume(tt);
+    const tw = V_W + st;
+    $("V-track").style.width = `${tw}px`;
+    $("V-track").style.top = `${33 - 0.06 * st}px`;
+    $("V-fill").style.width = `${v * V_W + st}px`;
+    $("V-knob").style.left = `${v * V_W + st}px`;
+    const g = step(tt - 5.5, 26, 0.8) - step(tt - 6.5, 20, 0.8);
+    $("V-knob").style.transform = `scale(${(1 + 0.18 * g).toFixed(4)})`;
+  }
+
+  // puck + tab labels
+  {
+    const L = puckL(tt), R = puckR(tt), ph = puckH(tt);
+    const gx = groupX(tt), gy = groupY(tt);
+    $("group").style.transform = `translate(${-228 + gx}px, ${-36 + gy}px)`;
+    const pk = $("puck");
+    Object.assign(pk.style, { left: `${228 + L}px`, top: `${36 - ph / 2}px`, width: `${R - L}px`, height: `${ph}px`, borderRadius: `${ph / 2}px` });
+    applyPresence(pk, tt, ...LAYERS.puck);
+    const la = presence(tt, ...LAYERS.labels);
+    for (const id of ["labels-w", "labels-b"]) applyPresence($(id), tt, ...LAYERS.labels);
+    $("labels-b").style.clipPath = `inset(${36 - ph / 2}px ${228 - R}px ${36 - ph / 2}px ${228 + L}px round ${ph / 2}px)`;
+    $("group-bg").style.opacity = (crit(tt - 9.55, 16) * la.a).toFixed(4);
+  }
+
+  // chart
+  if ($("L-chart").dataset.on === "1") {
+    const d = chartDraw(tt);
+    $("C-line").setAttribute("stroke-dasharray", `${d.toFixed(4)} 2`);
+    PTS.forEach((p, i) => { const k = clamp((d * 640 - (p[0] + 300)) / 40, 0, 1); $("dot" + i).setAttribute("r", (4.5 * k).toFixed(2)); });
+    const on = crit(tt - HOVER_ON, 28) * (1 - crit(tt - HOVER_OFF, 40));
+    const x = tipX(tt), y = tipY(tt);
+    $("C-guide").setAttribute("x1", x.toFixed(2)); $("C-guide").setAttribute("x2", x.toFixed(2));
+    $("C-guide").style.opacity = on.toFixed(3);
+    $("C-hot").setAttribute("cx", x.toFixed(2)); $("C-hot").setAttribute("cy", y.toFixed(2));
+    $("C-hot").setAttribute("r", (7 * on).toFixed(2));
+    const tip = $("C-tip");
+    const tw = tip.offsetWidth;
+    tip.style.transform = `translate(${340 + x - tw / 2}px, ${240 + y - 52 + 6 * (1 - on)}px)`;
+    tip.style.opacity = on.toFixed(3);
+    applyPresence($("tip0"), tt, HOVER_ON - 0.2, hoverSwitch);
+    applyPresence($("tip1"), tt, hoverSwitch, HOVER_OFF + 1);
+  }
+
+  // palette
+  if ($("L-palette").dataset.on === "1") {
+    $("L-palette").style.height = `${h}px`;
+    const txt = typed(tt);
+    $("K-text").textContent = txt;
+    $("K-ph").style.display = txt ? "none" : "inline";
+    const typing = tt >= 11.95 && tt < 12.8;
+    $("K-caret").style.opacity = typing || Math.floor((tt - 11.5) / 0.5) % 2 === 0 ? 1 : 0;
+    COMMANDS.forEach((_, i) => {
+      const el = $("K-row" + i);
+      const out = ROW_OUT[i];
+      const a = out ? 1 - crit(tt - out, 40) : 1;
+      el.style.opacity = a.toFixed(4);
+      el.style.filter = a < 0.999 ? `blur(${(8 * (1 - a)).toFixed(2)}px)` : "none";
+      el.style.top = `${8 + 52 * rowSlot[i](tt)}px`;
+      if (i === 0) el.style.background = oklabToCss(hexToOklab("#f2f0ec").map((c, j) => lerp(c, hexToOklab("#e7e4de")[j], step(tt - 12.93, 40, 1) - step(tt - 13.0, 30, 1))));
+    });
+  }
+  // cursor (screen space; scales gently with zoom like a screen recording)
+  const sx = VIEW / 2 + s * (curX(tt) - camX), sy = VIEW / 2 + s * curY(tt);
+  const cs = 1.45 * Math.pow(s / 2.2, 0.3) * (1 - 0.12 * cursorDown(tt));
+  $("cursor").style.transform = `translate(${(sx - 3).toFixed(2)}px, ${(sy - 2).toFixed(2)}px) scale(${cs.toFixed(4)})`;
+}
+
+window.seek = seek;
+window.ready = document.fonts.ready.then(() => { seek(0); return true; });
+// Preview in a browser: ?t=3.2 freezes a frame, otherwise it plays.
+const q = new URLSearchParams(location.search);
+if (q.has("t")) seek(parseFloat(q.get("t")));
+else if (!q.has("render")) { const t0 = performance.now(); const loop = () => { seek((performance.now() - t0) / 1000); requestAnimationFrame(loop); }; window.ready.then(loop); }
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "bpm": 120.0,
+  "period_s": 0.5,
+  "beats_detected": 84,
+  "grid_residual_ms": {
+    "mean_abs": 0.207,
+    "max_abs": 1.037
+  },
+  "downbeat_phase_scores": [
+    0.3524,
+    0.0135,
+    0.0281,
+    0.0562
+  ],
+  "downbeat_phase": 0,
+  "loop_start_s": 15.997,
+  "loop_len_s": 14.0,
+  "loop_seam_maxdiff": 0.0
+}
